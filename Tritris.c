@@ -98,7 +98,6 @@ bool colisao(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
                     x + j >= NUM_COLUNAS ||
                     // A parte verificada está encostando numa peça fixada na matriz?
                     matriz[y + i][x + j] == 1) {
-                        printf("Colisao detectada\n");
                     return true;
 
                 }
@@ -215,25 +214,19 @@ void gravidade(int* x, int* y, int peca[LARG_PECAS][COMP_PECAS]) {
 // Muda a posição da peça um espaço desejado.
 // Ex: chamar moverPeca(2,0) muda a posição da peça duas casas para a direita
 void moverPeca(int dx, int dy) {
-    printf("Tentando mover a peça para x: %d, y: %d\n", x + dx, y + dy);
     if (!colisao(x + dx, y + dy, pecaAtiva)) {
         x += dx;
         y += dy;
-        printf("Peça movida para x: %d, y: %d\n", x, y);
     } else {
-        printf("Movimento bloqueado por colisão\n");
     }
     atualizarMatrizComPeca(x, y, pecaAtiva);
     atualizarLeds();
 }
 
 void botoes_interrupt_handler(uint gpio, uint32_t events) {
-    printf("Interrupção acionada! GPIO: %d | Evento: %d\n", gpio, events);
     if (gpio == BOTAO_A_PIN) {
-        printf("movendo a peça para esquerda\n");
         moverPeca(-1, 0);  
     } else if (gpio == BOTAO_B_PIN) {
-        printf("movendo a peça para direita\n");
         moverPeca(1, 0);  
     }
     atualizarLeds();  
