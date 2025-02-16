@@ -28,7 +28,7 @@ int y = 0;
 PIO pio;
 uint sm;
 
-// Mapeia a ordem dos LEDs para as posições equivalerem a matriz lógica do jogo
+// Mapeia a posição desejada para a posição do led desejado
 int mapearIndiceLED(int linha, int coluna) {
     int linhaInvertida = NUM_LINHAS - 1 - linha;
 
