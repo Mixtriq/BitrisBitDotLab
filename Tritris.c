@@ -71,9 +71,9 @@ void atualizarLeds() {
         for (int j = 0; j < NUM_COLUNAS; j++) {
             int ledIndex = mapearIndiceLED(i, j);
             if (matriz[i][j] == 1) {
-                leds[ledIndex] = 0x00FF00; // Vermelho para peças fixadas
+                leds[ledIndex] = 0x001100; // Vermelho para peças fixadas
             } else if (matriz[i][j] == 2) {
-                leds[ledIndex] = 0xFF0000; // Verde para a peça em movimento
+                leds[ledIndex] = 0x110000; // Verde para a peça em movimento
             } else {
                 leds[ledIndex] = 0x000000; // Apagado
             }
@@ -166,7 +166,7 @@ void criarNovaPeca() {
         limparMatriz();
         while (tempo <= tempoMaximo){
             for(int i = 0; i < NUM_LEDS; i++){
-                pio_sm_put_blocking(pio, sm, 0xFFFFFF);
+                pio_sm_put_blocking(pio, sm, 0x111111);
             }
             tempo += 1000;
             sleep_ms(1000);
@@ -266,8 +266,7 @@ int main() {
     sleep_ms(5000);
 
     criarNovaPeca();
-    sleep_ms(100);
-    atualizarLeds();
+
 
     while (1) { 
         gravidade(&x, &y, pecaAtiva);
