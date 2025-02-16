@@ -143,6 +143,29 @@ void fixar(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     limparLinha();
 }
 
+// Atualiza a matriz com a peça em movimento, atribuindo o valor 2 as partes da matriz onde a peça atual está ocupando
+void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
+    // Primeiro apaga a posição antiga da peça
+    for (int i = 0; i < NUM_LINHAS; i++) {
+        for (int j = 0; j < NUM_COLUNAS; j++) {
+            if (matriz[i][j] == 2) {
+                matriz[i][j] = 0;
+            }
+        }
+    }
+    
+    // Então atribui o valor 2 onde a peça vai ocupar
+    for (int i = 0; i < LARG_PECAS; i++) {
+        for (int j = 0; j < COMP_PECAS; j++) {
+            // Verifica quais partes da matriz da peça são ocupadas
+            //              para o caso de uma peça em formato de L que poderia ser: [1,1]
+            // E verifica se a peça está numa posição dentro do campo                [0,1]
+            if (peca[i][j] == 1 && y + i < NUM_LINHAS && x + j < NUM_COLUNAS) {
+                matriz[y + i][x + j] = 2;
+            }
+        }
+    }
+}
 
 // Escolhe aleatóriamente uma das duas peças para criar
 void criarNovaPeca() {
@@ -172,31 +195,8 @@ void criarNovaPeca() {
         }
         atualizarLeds();
     }
-    atualizarLeds(pio, sm);
-}
-
-// Atualiza a matriz com a peça em movimento, atribuindo o valor 2 as partes da matriz onde a peça atual está ocupando
-void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
-    // Primeiro apaga a posição antiga da peça
-    for (int i = 0; i < NUM_LINHAS; i++) {
-        for (int j = 0; j < NUM_COLUNAS; j++) {
-            if (matriz[i][j] == 2) {
-                matriz[i][j] = 0;
-            }
-        }
-    }
-    
-    // Então atribui o valor 2 onde a peça vai ocupar
-    for (int i = 0; i < LARG_PECAS; i++) {
-        for (int j = 0; j < COMP_PECAS; j++) {
-            // Verifica quais partes da matriz da peça são ocupadas
-            //              para o caso de uma peça em formato de L que poderia ser: [1,1]
-            // E verifica se a peça está numa posição dentro do campo                [0,1]
-            if (peca[i][j] == 1 && y + i < NUM_LINHAS && x + j < NUM_COLUNAS) {
-                matriz[y + i][x + j] = 2;
-            }
-        }
-    }
+    atualizarMatrizComPeca(x, y, pecaAtiva);
+    atualizarLeds();
 }
 
 // Desce a peça atual em 1 linha
@@ -245,15 +245,14 @@ int main() {
     gpio_pull_up(BOTAO_A_PIN); 
     gpio_pull_up(BOTAO_B_PIN);
 
+    gpio_set_irq_enabled_with_callback(BOTAO_A_PIN, GPIO_IRQ_EDGE_FALL, true, &botoes_interrupt_handler);
+    gpio_set_irq_enabled(BOTAO_B_PIN, GPIO_IRQ_EDGE_FALL, true);
+
     pio = pio0; 
     sm = pio_claim_unused_sm(pio, true);
-
-
     uint offset = pio_add_program(pio, &ws2812_program);
 
     ws2812_program_init(pio, sm, offset, MAT_LED_PIN, 800000, false);
-    gpio_set_irq_enabled_with_callback(BOTAO_A_PIN, GPIO_IRQ_EDGE_FALL, true, &botoes_interrupt_handler);
-    gpio_set_irq_enabled(BOTAO_B_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     limparLeds();
     sleep_ms(5000);
