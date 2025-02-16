@@ -98,7 +98,9 @@ bool colisao(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
                     x + j >= NUM_COLUNAS ||
                     // A parte verificada está encostando numa peça fixada na matriz?
                     matriz[y + i][x + j] == 1) {
+                        printf("Colisao detectada\n");
                     return true;
+
                 }
             }
         }
@@ -145,17 +147,17 @@ void fixar(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
 
 // Escolhe aleatóriamente uma das duas peças para criar
 void criarNovaPeca() {
+
+    x = 0;
+    y = 0;
+
     int escolha = rand() % 2; 
     if (escolha == 0) {
         memcpy(pecaAtiva, pecaHorizontal, sizeof(pecaHorizontal));
     } else {
-       memcpy(pecaAtiva, pecaVertical, sizeof(pecaVertical));
+        memcpy(pecaAtiva, pecaVertical, sizeof(pecaVertical));
     }
-    atualizarLeds(pio, sm);
-
-
-    x = 0;
-    y = 0;
+    
 
     // Se a peça criada colidir com alguma peça fixada, ele da Game Over acendendo todos os leds por alguns segundos
     if (colisao(x, y, pecaAtiva)) {
@@ -171,6 +173,7 @@ void criarNovaPeca() {
         }
         atualizarLeds();
     }
+    atualizarLeds(pio, sm);
 }
 
 // Atualiza a matriz com a peça em movimento, atribuindo o valor 2 as partes da matriz onde a peça atual está ocupando
@@ -212,31 +215,28 @@ void gravidade(int* x, int* y, int peca[LARG_PECAS][COMP_PECAS]) {
 // Muda a posição da peça um espaço desejado.
 // Ex: chamar moverPeca(2,0) muda a posição da peça duas casas para a direita
 void moverPeca(int dx, int dy) {
+    printf("Tentando mover a peça para x: %d, y: %d\n", x + dx, y + dy);
     if (!colisao(x + dx, y + dy, pecaAtiva)) {
         x += dx;
         y += dy;
+        printf("Peça movida para x: %d, y: %d\n", x, y);
+    } else {
+        printf("Movimento bloqueado por colisão\n");
     }
     atualizarMatrizComPeca(x, y, pecaAtiva);
     atualizarLeds();
 }
 
-void botaoA_interrupt_handler(uint gpio, uint32_t events) {
+void botoes_interrupt_handler(uint gpio, uint32_t events) {
+    printf("Interrupção acionada! GPIO: %d | Evento: %d\n", gpio, events);
     if (gpio == BOTAO_A_PIN) {
+        printf("movendo a peça para esquerda\n");
         moverPeca(-1, 0);  
-        atualizarLeds();  
+    } else if (gpio == BOTAO_B_PIN) {
+        printf("movendo a peça para direita\n");
+        moverPeca(1, 0);  
     }
-}
-
-void botaoB_interrupt_handler(uint gpio, uint32_t events) {
-    if (gpio == BOTAO_B_PIN) {
-        moverPeca(1, 0);   
-        atualizarLeds();  
-    }
-}
-
-void configurarBotoesDeInterrupcao() {
-    gpio_set_irq_enabled_with_callback(BOTAO_A_PIN, GPIO_IRQ_EDGE_FALL, true, &botaoA_interrupt_handler);
-    gpio_set_irq_enabled_with_callback(BOTAO_B_PIN, GPIO_IRQ_EDGE_FALL, true, &botaoB_interrupt_handler);
+    atualizarLeds();  
 }
 
 int main() {
@@ -248,6 +248,7 @@ int main() {
 
     gpio_set_dir(BOTAO_A_PIN, GPIO_IN);
     gpio_set_dir(BOTAO_B_PIN, GPIO_IN);
+
     gpio_pull_up(BOTAO_A_PIN); 
     gpio_pull_up(BOTAO_B_PIN);
 
@@ -258,30 +259,19 @@ int main() {
     uint offset = pio_add_program(pio, &ws2812_program);
 
     ws2812_program_init(pio, sm, offset, MAT_LED_PIN, 800000, false);
+    gpio_set_irq_enabled_with_callback(BOTAO_A_PIN, GPIO_IRQ_EDGE_FALL, true, &botoes_interrupt_handler);
+    gpio_set_irq_enabled(BOTAO_B_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     limparLeds();
     sleep_ms(5000);
 
     criarNovaPeca();
+    sleep_ms(100);
+    atualizarLeds();
 
-    configurarBotoesDeInterrupcao();
-
-    int contador_gravidade = 0;
-    int intervalo_gravidade = 1000;
-
-    bool atualizar_leds = true;
-
-    while (1) {
-
-        if(contador_gravidade >= intervalo_gravidade){
-            gravidade(&x, &y, pecaAtiva);
-            contador_gravidade = 0;
-            bool atualizar_leds = true;
-        }
-
-        contador_gravidade += 100;
-        sleep_ms(100);
-        
+    while (1) { 
+        gravidade(&x, &y, pecaAtiva);
+        sleep_ms(1000);
     }
 }
 
