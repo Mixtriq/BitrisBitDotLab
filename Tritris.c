@@ -2,8 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pico/stdlib.h"
-#include "hardware/pio.h"
-#include "hardware/adc.h"
+
 #include "ws2812.pio.h" 
 
 #define MAT_LED_PIN 7
@@ -29,6 +28,7 @@ int y = 0;
 PIO pio;
 uint sm;
 
+// Mapeia a ordem dos LEDs para as posições equivalerem a matriz lógica do jogo
 int mapearIndiceLED(int linha, int coluna) {
     int linhaInvertida = NUM_LINHAS - 1 - linha;
 
@@ -39,6 +39,7 @@ int mapearIndiceLED(int linha, int coluna) {
     }
 }
 
+// Apaga todos os leds para ter uma janela de tempo de reiniciar a placa sem os leds ficarem acesos indefinidamente
 void limparLeds() {
     for (int i = 0; i < NUM_LEDS; i++) {
         pio_sm_put_blocking(pio, sm, 0x000000);
@@ -46,19 +47,22 @@ void limparLeds() {
     sleep_ms(1);
 }
 
+// Reinicia a matriz lógica para recomeçar o jogo
 void limparMatriz(){
     memset(matriz, 0, sizeof(matriz));
 }
 
-// void imprimirMatriz() {
-//     printf("\nEstado da Matriz:\n");
-//     for (int i = 0; i < NUM_LINHAS; i++) {
-//         for (int j = 0; j < NUM_COLUNAS; j++) {
-//             printf("%d ", matriz[i][j]);
-//         }
-//         printf("\n");
-//     }
-// }
+// Imprime a matriz do jogo no monitor serial
+// Usada para debug, não é chamada nesta versão do código
+void imprimirMatriz() {
+    printf("\nEstado da Matriz:\n");
+    for (int i = 0; i < NUM_LINHAS; i++) {
+        for (int j = 0; j < NUM_COLUNAS; j++) {
+            printf("%d ", matriz[i][j]);
+        }
+        printf("\n");
+    }
+}
 
 void atualizarLeds() {
     uint32_t leds[NUM_LEDS] = {0};
@@ -67,9 +71,9 @@ void atualizarLeds() {
         for (int j = 0; j < NUM_COLUNAS; j++) {
             int ledIndex = mapearIndiceLED(i, j);
             if (matriz[i][j] == 1) {
-                leds[ledIndex] = 0xFF0000; // Vermelho para peças fixadas
+                leds[ledIndex] = 0x00FF00; // Vermelho para peças fixadas
             } else if (matriz[i][j] == 2) {
-                leds[ledIndex] = 0x00FF00; // Verde para a peça em movimento
+                leds[ledIndex] = 0xFF0000; // Verde para a peça em movimento
             } else {
                 leds[ledIndex] = 0x000000; // Apagado
             }
@@ -81,12 +85,19 @@ void atualizarLeds() {
     }
 }
 
-
+// Verifica se uma peça esta colidindo com uma peça fixada ou com as bordas da matriz
 bool colisao(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     for (int i = 0; i < LARG_PECAS; i++) {
         for (int j = 0; j < COMP_PECAS; j++) {
             if (peca[i][j] == 1) {
-                if (y + i >= NUM_LINHAS || x + j < 0 || x + j >= NUM_COLUNAS || matriz[y + i][x + j] == 1) {
+                if (// A parte verificada da peça está além da ou encostando na altura maxima da matriz?
+                    y + i >= NUM_LINHAS ||
+                    // A parte verificada da peça está na primeira coluna da matriz?
+                    x + j < 0 ||
+                    // A parte verificada da peça está além da ou encostando na ultima coluna da matriz?
+                    x + j >= NUM_COLUNAS ||
+                    // A parte verificada está encostando numa peça fixada na matriz?
+                    matriz[y + i][x + j] == 1) {
                     return true;
                 }
             }
@@ -119,6 +130,7 @@ void limparLinha() {
     }
 }
 
+// Transforma uma peça em movimento numa peça fixa na matriz
 void fixar(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     for (int i = 0; i < LARG_PECAS; i++) {
         for (int j = 0; j < COMP_PECAS; j++) {
@@ -130,6 +142,8 @@ void fixar(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     limparLinha();
 }
 
+
+// Escolhe aleatóriamente uma das duas peças para criar
 void criarNovaPeca() {
     int escolha = rand() % 2; 
     if (escolha == 0) {
@@ -143,14 +157,14 @@ void criarNovaPeca() {
     x = 0;
     y = 0;
 
-
+    // Se a peça criada colidir com alguma peça fixada, ele da Game Over acendendo todos os leds por alguns segundos
     if (colisao(x, y, pecaAtiva)) {
         int tempo = 0;
         int tempoMaximo = 2000;
         limparMatriz();
         while (tempo <= tempoMaximo){
             for(int i = 0; i < NUM_LEDS; i++){
-                pio_sm_put_blocking(pio, sm, 0x0FF000);
+                pio_sm_put_blocking(pio, sm, 0xFFFFFF);
             }
             tempo += 1000;
             sleep_ms(1000);
@@ -159,7 +173,9 @@ void criarNovaPeca() {
     }
 }
 
+// Atualiza a matriz com a peça em movimento, atribuindo o valor 2 as partes da matriz onde a peça atual está ocupando
 void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
+    // Primeiro apaga a posição antiga da peça
     for (int i = 0; i < NUM_LINHAS; i++) {
         for (int j = 0; j < NUM_COLUNAS; j++) {
             if (matriz[i][j] == 2) {
@@ -167,9 +183,13 @@ void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
             }
         }
     }
-
+    
+    // Então atribui o valor 2 onde a peça vai ocupar
     for (int i = 0; i < LARG_PECAS; i++) {
         for (int j = 0; j < COMP_PECAS; j++) {
+            // Verifica quais partes da matriz da peça são ocupadas
+            //              para o caso de uma peça em formato de L que poderia ser: [1,1]
+            // E verifica se a peça está numa posição dentro do campo                [0,1]
             if (peca[i][j] == 1 && y + i < NUM_LINHAS && x + j < NUM_COLUNAS) {
                 matriz[y + i][x + j] = 2;
             }
@@ -177,6 +197,7 @@ void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     }
 }
 
+// Desce a peça atual em 1 linha
 void gravidade(int* x, int* y, int peca[LARG_PECAS][COMP_PECAS]) {
     if (!colisao(*x, *y + 1, peca)) {
         (*y)++;
@@ -188,6 +209,8 @@ void gravidade(int* x, int* y, int peca[LARG_PECAS][COMP_PECAS]) {
     atualizarLeds();
 }
 
+// Muda a posição da peça um espaço desejado.
+// Ex: chamar moverPeca(2,0) muda a posição da peça duas casas para a direita
 void moverPeca(int dx, int dy) {
     if (!colisao(x + dx, y + dy, pecaAtiva)) {
         x += dx;
@@ -199,15 +222,15 @@ void moverPeca(int dx, int dy) {
 
 void botaoA_interrupt_handler(uint gpio, uint32_t events) {
     if (gpio == BOTAO_A_PIN) {
-        moverPeca(-1, 0);  // Move a peça para a esquerda
-        atualizarLeds();  // Atualiza os LEDs
+        moverPeca(-1, 0);  
+        atualizarLeds();  
     }
 }
 
 void botaoB_interrupt_handler(uint gpio, uint32_t events) {
     if (gpio == BOTAO_B_PIN) {
-        moverPeca(1, 0);   // Move a peça para a direita
-        atualizarLeds();  // Atualiza os LEDs
+        moverPeca(1, 0);   
+        atualizarLeds();  
     }
 }
 
@@ -219,16 +242,16 @@ void configurarBotoesDeInterrupcao() {
 int main() {
 
     stdio_init_all();
-    adc_init();
+
     gpio_init(BOTAO_A_PIN);
     gpio_init(BOTAO_B_PIN);
+
     gpio_set_dir(BOTAO_A_PIN, GPIO_IN);
     gpio_set_dir(BOTAO_B_PIN, GPIO_IN);
     gpio_pull_up(BOTAO_A_PIN); 
     gpio_pull_up(BOTAO_B_PIN);
 
-    pio = pio0;
-    
+    pio = pio0; 
     sm = pio_claim_unused_sm(pio, true);
 
 
@@ -255,7 +278,7 @@ int main() {
             contador_gravidade = 0;
             bool atualizar_leds = true;
         }
-        
+
         contador_gravidade += 100;
         sleep_ms(100);
         
