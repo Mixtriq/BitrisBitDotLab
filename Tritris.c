@@ -90,7 +90,7 @@ bool colisao(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     for (int i = 0; i < LARG_PECAS; i++) {
         for (int j = 0; j < COMP_PECAS; j++) {
             if (peca[i][j] == 1) {
-                if (// A parte verificada da peça está além da ou encostando na altura maxima da matriz?
+                if (// A parte verificada da peça está além da ou encostando no fundo da matriz?
                     y + i >= NUM_LINHAS ||
                     // A parte verificada da peça está na primeira coluna da matriz?
                     x + j < 0 ||
