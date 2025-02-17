@@ -158,8 +158,7 @@ void atualizarMatrizComPeca(int x, int y, int peca[LARG_PECAS][COMP_PECAS]) {
     for (int i = 0; i < LARG_PECAS; i++) {
         for (int j = 0; j < COMP_PECAS; j++) {
             // Verifica quais partes da matriz da peça são ocupadas
-            //              para o caso de uma peça em formato de L que poderia ser: [1,1]
-            // E verifica se a peça está numa posição dentro do campo                [0,1]
+            // E verifica se a peça está numa posição dentro do campo             
             if (peca[i][j] == 1 && y + i < NUM_LINHAS && x + j < NUM_COLUNAS) {
                 matriz[y + i][x + j] = 2;
             }
